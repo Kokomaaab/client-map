@@ -1,0 +1,175 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Client Map with Filters</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+        crossorigin=""
+    />
+    <style>
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            left: 0;
+        }
+        #search-box {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border: 2px solid #ccc;
+            font-family: Arial, sans-serif;
+        }
+        #info-pane {
+    top: auto;
+    bottom: auto;
+    max-height: 180px;
+    overflow-y: auto;
+            position: absolute;
+            top: 150px;
+            left: 10px;
+            width: 260px;
+            background: white;
+            padding: 10px;
+            border: 2px solid #ccc;
+            font-family: Arial, sans-serif;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+    <div id="search-box">
+        <label><strong>Search Client or Country:</strong></label><br>
+        <input type="text" id="searchInput" placeholder="Type to search..." oninput="searchAndZoom()" style="width: 240px; padding: 5px;"><br><br>
+
+        <label><strong>Filter by Country:</strong></label><br>
+        <select id="countryFilter" onchange="filterByCountry()" style="width: 240px; padding: 5px;">
+            <option value="">-- All Countries --</option>
+            <option value="ALBANIA">ALBANIA</option>
+<option value="BULGARIA">BULGARIA</option>
+<option value="CROATIA">CROATIA</option>
+<option value="CYPRUS">CYPRUS</option>
+<option value="GREECE">GREECE</option>
+<option value="POLAND">POLAND</option>
+<option value="SPAIN">SPAIN</option>
+<option value="THE NETHERLANDS">THE NETHERLANDS</option>
+        </select><br><br><label><strong>Turnover Filter (€):</strong></label><br><input type="range" id="turnoverRange" min="0" max="168370" value="0" step="1000" oninput="filterMarkers()"><span id="turnoverValue">0</span><br><br><button onclick="resetFilters()" style="width: 240px;">Reset Filters</button>
+    </div>
+    <div id="info-pane" style="margin-top:280px;">Click a client marker to view details here.</div>
+    <div id="map"></div>
+
+    <script
+        src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+        crossorigin=""
+    ></script>
+    <script>
+        const clientData = [{"Client Name": "ABOKATOS                     ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.64395, "Longitude": 22.92022}, {"Client Name": "AFOI ARMENAKH OE             ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 37.95902, "Longitude": 23.648741}, {"Client Name": "AFOI FOTIADI OE              ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.53181, "Longitude": 22.2028}, {"Client Name": "AFOI GOURNI OE               ", "Country": "GREECE", "Status": "Active", "Turnover": 1264.54, "Latitude": 38.45881, "Longitude": 23.60926}, {"Client Name": "AFOI KADOGLOU KAI SIA OE     ", "Country": "GREECE", "Status": "Active", "Turnover": 17817.54, "Latitude": 40.5144, "Longitude": 22.21383}, {"Client Name": "AFOI KAROLIDI OE             ", "Country": "GREECE", "Status": "Terminated", "Turnover": 0.0, "Latitude": 40.99067, "Longitude": 22.87099}, {"Client Name": "AFOI MAGAZH OE               ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 37.96564, "Longitude": 23.72914}, {"Client Name": "AFOI PAPADIMITRIOU OE        ", "Country": "GREECE", "Status": "Active", "Turnover": 19780.94, "Latitude": 38.46197, "Longitude": 23.60499}, {"Client Name": "AFOI VASILEIOY ZARBINI OE    ", "Country": "GREECE", "Status": "Active", "Turnover": 2575.91, "Latitude": 37.99372, "Longitude": 23.77559}, {"Client Name": "AFRATIS SPYRIDON             ", "Country": "GREECE", "Status": "Active", "Turnover": 5967.63, "Latitude": 38.4605, "Longitude": 23.60626}, {"Client Name": "AGGELOS STAVROPOULOS         ", "Country": "GREECE", "Status": "Active", "Turnover": 26069.44, "Latitude": 38.23681, "Longitude": 22.09749}, {"Client Name": "ALEXIOU MARIA XRHSTOS        ", "Country": "GREECE", "Status": "Active", "Turnover": 88827.33, "Latitude": 40.6704, "Longitude": 22.9376}, {"Client Name": "ANDREADAKIS SA               ", "Country": "GREECE", "Status": "Active", "Turnover": 4010.4, "Latitude": 40.65417, "Longitude": 22.8725}, {"Client Name": "APELKO| AFOI ZYGOURA KAI SIA ", "Country": "GREECE", "Status": "Active", "Turnover": 12711.45, "Latitude": 37.96567, "Longitude": 23.72899}, {"Client Name": "AUTO GENTI GROUP             ", "Country": "ALBANIA", "Status": "Active", "Turnover": 18505.73, "Latitude": 40.73333, "Longitude": 19.57067}, {"Client Name": "Auto Impact                  ", "Country": "ALBANIA", "Status": "Active", "Turnover": 11694.78, "Latitude": 41.33488, "Longitude": 19.83136}, {"Client Name": "Auto Recambios Irún          ", "Country": "SPAIN", "Status": "Not active", "Turnover": 0.0, "Latitude": 43.33338, "Longitude": -1.81748}, {"Client Name": "AUTOFLAN SA                  ", "Country": "GREECE", "Status": "Active", "Turnover": 12957.17, "Latitude": 37.95841, "Longitude": 23.73669}, {"Client Name": "AUTONET PARTS                ", "Country": "GREECE", "Status": "Active", "Turnover": 8839.81, "Latitude": 40.59207, "Longitude": 22.9615}, {"Client Name": "AUTOPAP AE                   ", "Country": "GREECE", "Status": "Terminated", "Turnover": 0.0, "Latitude": 38.33716, "Longitude": 23.31987}, {"Client Name": "AVAPARTS                      ", "Country": "THE NETHERLANDS", "Status": "Not active", "Turnover": 0.0, "Latitude": 52.06447, "Longitude": 4.31974}, {"Client Name": "AVGEROPOULOS EE               ", "Country": "GREECE", "Status": "Active", "Turnover": 21000.0, "Latitude": 38.24316, "Longitude": 21.72877}, {"Client Name": "BALLAS CAR PARTS              ", "Country": "GREECE", "Status": "Active", "Turnover": 3060.79, "Latitude": 38.05789, "Longitude": 23.73861}, {"Client Name": "Bilon Europe S.L.             ", "Country": "SPAIN", "Status": "Not active", "Turnover": 0.0, "Latitude": 43.28629, "Longitude": -2.88703}, {"Client Name": "CARLIS 016                    ", "Country": "ALBANIA", "Status": "Not active", "Turnover": 0.0, "Latitude": 41.32708, "Longitude": 19.80827}, {"Client Name": "CHRISTOU EVAGGELOS            ", "Country": "GREECE", "Status": "Active", "Turnover": 6687.51, "Latitude": 39.24156, "Longitude": 20.95608}, {"Client Name": "CHRONIS                       ", "Country": "GREECE", "Status": "Active", "Turnover": 43985.33, "Latitude": 38.23331, "Longitude": 21.73291}, {"Client Name": "DALAMARINIS G.D. & SIA OE     ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 37.93694, "Longitude": 22.93428}, {"Client Name": "DIGIPARTS                     ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.69378, "Longitude": 22.95055}, {"Client Name": "DIMIZAS A DESTES E OE         ", "Country": "GREECE", "Status": "Active", "Turnover": 13263.76, "Latitude": 37.37883, "Longitude": 23.15173}, {"Client Name": "DRAKOGLOU                     ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.64714, "Longitude": 22.92295}, {"Client Name": "EL NTERINI LTD                ", "Country": "BULGARIA", "Status": "Active", "Turnover": 0.0, "Latitude": 42.70807, "Longitude": 23.32526}, {"Client Name": "ENEF KARAMANOGLOU OE          ", "Country": "GREECE", "Status": "Active", "Turnover": 3249.07, "Latitude": 40.60959, "Longitude": 22.96276}, {"Client Name": "EPPARTS |OUROUTS MEXMET HUSEIN", "Country": "GREECE", "Status": "Active", "Turnover": 0.0, "Latitude": 41.10613, "Longitude": 25.42388}, {"Client Name": "EUROANTALLAKTIKI              ", "Country": "GREECE", "Status": "Terminated", "Turnover": 0.0, "Latitude": 40.64982, "Longitude": 22.91899}, {"Client Name": "GENPARTS LTD                  ", "Country": "CYPRUS", "Status": "Active", "Turnover": 43577.46, "Latitude": 34.6771, "Longitude": 32.99475}, {"Client Name": "GEORGOULAS E & GEORGOULAS K OE", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 38.05432, "Longitude": 23.75296}, {"Client Name": "GEROUTSIS                     ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 37.99718, "Longitude": 23.77782}, {"Client Name": "GIANNAKIDIS & SIA OE          ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.33919, "Longitude": 21.79315}, {"Client Name": "GKATSIDIS K KAI SIA OE        ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.67411, "Longitude": 22.92897}, {"Client Name": "GKCARPARTS                    ", "Country": "GREECE", "Status": "Active", "Turnover": 56151.03, "Latitude": 38.21447, "Longitude": 21.72056}, {"Client Name": "GRAMMENOS                     ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 39.62088, "Longitude": 19.9062}, {"Client Name": "GRATSIAS                      ", "Country": "GREECE", "Status": "Active", "Turnover": 59244.06, "Latitude": 38.02455, "Longitude": 23.73071}, {"Client Name": "IAKOVIDIS IKE                 ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.65059, "Longitude": 22.91584}, {"Client Name": "INIOCHOS SA                   ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.64042, "Longitude": 22.93866}, {"Client Name": "JIOSKO OE                     ", "Country": "GREECE", "Status": "Active", "Turnover": 17035.24, "Latitude": 38.00959, "Longitude": 23.76094}, {"Client Name": "KAKNOS AE                     ", "Country": "GREECE", "Status": "Active", "Turnover": 36920.28, "Latitude": 37.95726, "Longitude": 23.73368}, {"Client Name": "KAMARIS DIOGENIS LTD          ", "Country": "GREECE", "Status": "Active", "Turnover": 39575.2, "Latitude": 40.64179, "Longitude": 22.91644}, {"Client Name": "KANDIMOIRIS IAKOVOS - ECMPARTS", "Country": "GREECE", "Status": "Active", "Turnover": 6142.87, "Latitude": 40.64836, "Longitude": 22.92777}, {"Client Name": "KANNAS                        ", "Country": "CYPRUS", "Status": "Active", "Turnover": 7241.16, "Latitude": 35.16204, "Longitude": 33.37458}, {"Client Name": "KANTERES EE                   ", "Country": "GREECE", "Status": "Active", "Turnover": 31019.47, "Latitude": 37.83725, "Longitude": 23.92312}, {"Client Name": "KAPSIOTIS X KOUTROUMPIS H OE  ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 37.5714, "Longitude": 22.81266}, {"Client Name": "KARAKITSOS                    ", "Country": "GREECE", "Status": "Active", "Turnover": 13622.51, "Latitude": 40.64018, "Longitude": 22.93779}, {"Client Name": "KARKO                         ", "Country": "GREECE", "Status": "Active", "Turnover": 15726.62, "Latitude": 40.67426, "Longitude": 22.91167}, {"Client Name": "KARVA                         ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.64837, "Longitude": 22.92076}, {"Client Name": "KONSTANTINOS SOTIROPOULOS SIA ", "Country": "GREECE", "Status": "Active", "Turnover": 15932.51, "Latitude": 37.93895, "Longitude": 22.92322}, {"Client Name": "KONTOCAR EE                   ", "Country": "GREECE", "Status": "Active", "Turnover": 16426.36, "Latitude": 38.01319, "Longitude": 23.72345}, {"Client Name": "KONTOCHRISTOFI ELENI-CITYPART ", "Country": "GREECE", "Status": "Active", "Turnover": 8867.84, "Latitude": 37.99332, "Longitude": 23.67519}, {"Client Name": "KORNARAKIS ALEKSANDROS        ", "Country": "GREECE", "Status": "Active", "Turnover": 8392.32, "Latitude": 35.13855, "Longitude": 25.26389}, {"Client Name": "KOUZOULOGLOU                  ", "Country": "GREECE", "Status": "Active", "Turnover": 1624.13, "Latitude": 37.96076, "Longitude": 23.68653}, {"Client Name": "KOUZOULOGLOU 1                ", "Country": "GREECE", "Status": "Active", "Turnover": 32785.95, "Latitude": 37.96076, "Longitude": 23.75803}, {"Client Name": "KRITSOTAKIS ANTONIOS IOANNIS  ", "Country": "GREECE", "Status": "Active", "Turnover": 12749.77, "Latitude": 35.3413, "Longitude": 25.15571}, {"Client Name": "LAMPROU PARTS IKE             ", "Country": "GREECE", "Status": "Active", "Turnover": 31452.74, "Latitude": 37.96585, "Longitude": 23.70503}, {"Client Name": "LAURO NICOLAS LEONAR FRANSOUA ", "Country": "GREECE", "Status": "Active", "Turnover": 31889.98, "Latitude": 37.95604, "Longitude": 23.76676}, {"Client Name": "LAVASA VIRGINIA XRHSTOS       ", "Country": "GREECE", "Status": "Active", "Turnover": 6292.8, "Latitude": 37.99899, "Longitude": 23.71933}, {"Client Name": "MAGDIC                        ", "Country": "CROATIA", "Status": "Active", "Turnover": 11719.24, "Latitude": 46.37357, "Longitude": 16.5229}, {"Client Name": "MAGKOS                        ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 41.12607, "Longitude": 24.88411}, {"Client Name": "MANTHAS OE                    ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 39.16175, "Longitude": 20.98011}, {"Client Name": "MARAGKOS                      ", "Country": "GREECE", "Status": "Active", "Turnover": 66650.05, "Latitude": 38.13964, "Longitude": 23.85552}, {"Client Name": "MARGARITIS                    ", "Country": "GREECE", "Status": "Active", "Turnover": 23907.52, "Latitude": 38.01278, "Longitude": 23.6891}, {"Client Name": "MASTERPARTS EE                ", "Country": "GREECE", "Status": "Active", "Turnover": 16699.76, "Latitude": 38.6237, "Longitude": 21.39918}, {"Client Name": "MASTERPARTS GR                ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 37.96413, "Longitude": 23.61976}, {"Client Name": "MAVRIANOS GEORGIOS KAI SIA EE ", "Country": "GREECE", "Status": "Active", "Turnover": 51420.39, "Latitude": 38.05446, "Longitude": 23.53613}, {"Client Name": "MILONAS K & I OE              ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 38.05939, "Longitude": 23.59319}, {"Client Name": "MOUGIOS DIMITRIS KAI SIA OE   ", "Country": "GREECE", "Status": "Active", "Turnover": 1962.36, "Latitude": 37.98718, "Longitude": 23.71095}, {"Client Name": "MPELIAS KONSTANTINOS DIMITRIOS", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 38.01333, "Longitude": 23.75191}, {"Client Name": "MPIMPAS PASTROMAS OE          ", "Country": "GREECE", "Status": "Active", "Turnover": 2922.48, "Latitude": 38.38201, "Longitude": 21.81868}, {"Client Name": "NITSOTOLIS                    ", "Country": "GREECE", "Status": "Active", "Turnover": 16148.54, "Latitude": 36.39912, "Longitude": 28.20313}, {"Client Name": "NTIA                          ", "Country": "GREECE", "Status": "Active", "Turnover": 7693.34, "Latitude": 35.33305, "Longitude": 25.10258}, {"Client Name": "ON PARTS                     ", "Country": "GREECE", "Status": "Active", "Turnover": 12890.79, "Latitude": 37.9577, "Longitude": 23.68302}, {"Client Name": "PAKOPEL SA                   ", "Country": "GREECE", "Status": "Active", "Turnover": 108461.18, "Latitude": 37.92501, "Longitude": 22.95908}, {"Client Name": "PANAGIOTOU AUTOPARTS         ", "Country": "GREECE", "Status": "Active", "Turnover": 1829.46, "Latitude": 37.98965, "Longitude": 23.67587}, {"Client Name": "PAPADATOS GEORGIOS KAI SIA OE", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 37.78118, "Longitude": 20.8769}, {"Client Name": "PAPOUTSIS IOANNIS MONOPROSOPI", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.59524, "Longitude": 22.9604}, {"Client Name": "PASSIAS                      ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 39.36398, "Longitude": 22.92997}, {"Client Name": "PASTROMAS PARTS              ", "Country": "GREECE", "Status": "Terminated", "Turnover": 0.0, "Latitude": 38.05753, "Longitude": 23.75436}, {"Client Name": "PATERAS                      ", "Country": "GREECE", "Status": "Active", "Turnover": 21178.18, "Latitude": 39.64592, "Longitude": 22.43681}, {"Client Name": "PATOULIOS                    ", "Country": "GREECE", "Status": "Active", "Turnover": 30509.1, "Latitude": 40.24784, "Longitude": 23.28342}, {"Client Name": "POWERZONE VOGIATZIS EE       ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 38.01502, "Longitude": 23.84375}, {"Client Name": "PREZAS SA                    ", "Country": "GREECE", "Status": "Active", "Turnover": 36595.95, "Latitude": 38.61981, "Longitude": 21.39831}, {"Client Name": "PROBIOP EPE                  ", "Country": "GREECE", "Status": "Active", "Turnover": 3074.95, "Latitude": 35.33305, "Longitude": 25.10358}, {"Client Name": "PROMITHEFTIKI                ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 38.0133, "Longitude": 23.72327}, {"Client Name": "PROTOGEROS                   ", "Country": "GREECE", "Status": "Active", "Turnover": 69896.66, "Latitude": 37.91906, "Longitude": 23.74497}, {"Client Name": "PSALTIS                      ", "Country": "CYPRUS", "Status": "Active", "Turnover": 168370.62, "Latitude": 35.18351, "Longitude": 33.39183}, {"Client Name": "PSARRAS                      ", "Country": "GREECE", "Status": "Active", "Turnover": 14595.06, "Latitude": 40.64108, "Longitude": 22.93731}, {"Client Name": "Recambios Reymo SL           ", "Country": "SPAIN", "Status": "Not active", "Turnover": 0.0, "Latitude": 42.46416, "Longitude": -2.45498}, {"Client Name": "Recambios San José           ", "Country": "SPAIN", "Status": "Not active", "Turnover": 0.0, "Latitude": 41.77086, "Longitude": -0.87615}, {"Client Name": "REGAKOS SA                   ", "Country": "GREECE", "Status": "Active", "Turnover": 20734.42, "Latitude": 37.95705, "Longitude": 23.73243}, {"Client Name": "Repuestos Gali Turismo S.L   ", "Country": "SPAIN", "Status": "Not active", "Turnover": 0.0, "Latitude": 42.80824, "Longitude": -1.68628}, {"Client Name": "RIGOS PETROS                 ", "Country": "GREECE", "Status": "Active", "Turnover": 23177.98, "Latitude": 38.01528, "Longitude": 23.80071}, {"Client Name": "RIZOGLOU                     ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 41.49658, "Longitude": 26.53181}, {"Client Name": "ROSSIDIS                     ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.65974, "Longitude": 22.94419}, {"Client Name": "S.PSALTIS                    ", "Country": "GREECE", "Status": "Active", "Turnover": 130482.11, "Latitude": 34.65668, "Longitude": 33.01293}, {"Client Name": "SAMIOS DIMITRIOS             ", "Country": "GREECE", "Status": "Active", "Turnover": 91511.1, "Latitude": 37.03806, "Longitude": 22.07913}, {"Client Name": "SEMA AE                      ", "Country": "GREECE", "Status": "Active", "Turnover": 3934.8, "Latitude": 35.31329, "Longitude": 25.12729}, {"Client Name": "SEMERTZIDIS DIMITRIOS STAVROS", "Country": "GREECE", "Status": "Active", "Turnover": 3177.72, "Latitude": 40.78461, "Longitude": 22.40669}, {"Client Name": "SKLIKAS                      ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 37.08015, "Longitude": 22.43155}, {"Client Name": "SMIGADIS                     ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 38.06491, "Longitude": 23.76151}, {"Client Name": "SOURSOS VALANTIS             ", "Country": "GREECE", "Status": "Active", "Turnover": 36378.24, "Latitude": 37.62468, "Longitude": 22.71671}, {"Client Name": "SPANOS ELEFTHERIOS ANASTASIOS", "Country": "GREECE", "Status": "Active", "Turnover": 35673.81, "Latitude": 37.96122, "Longitude": 23.72751}, {"Client Name": "SPANOS PARTS                 ", "Country": "GREECE", "Status": "Active", "Turnover": 618.17, "Latitude": 37.98079, "Longitude": 23.64833}, {"Client Name": "SPARE SERVICE                ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 37.98654, "Longitude": 23.70908}, {"Client Name": "STEFANAKIS                   ", "Country": "GREECE", "Status": "Active", "Turnover": 13620.13, "Latitude": 37.90179, "Longitude": 23.75642}, {"Client Name": "STIGGAS KASANDROS ALEKSANDROS", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.59934, "Longitude": 22.96274}, {"Client Name": "STRATOUDAKIS LTD             ", "Country": "GREECE", "Status": "Active", "Turnover": 105041.4, "Latitude": 40.65529, "Longitude": 22.90524}, {"Client Name": "TETOMA                       ", "Country": "GREECE", "Status": "Active", "Turnover": 9218.98, "Latitude": 40.65531, "Longitude": 22.88574}, {"Client Name": "TETRA CO                     ", "Country": "GREECE", "Status": "Active", "Turnover": 13279.55, "Latitude": 38.08365, "Longitude": 23.74516}, {"Client Name": "THEMA PARTS                  ", "Country": "GREECE", "Status": "Active", "Turnover": 7129.96, "Latitude": 40.65572, "Longitude": 22.91194}, {"Client Name": "THEODOULOU XRISTAKIS LTD     ", "Country": "CYPRUS", "Status": "Active", "Turnover": 22885.58, "Latitude": 35.12423, "Longitude": 33.33646}, {"Client Name": "TSAMPARLIS & KAI YIOS OE     ", "Country": "GREECE", "Status": "Active", "Turnover": 4129.29, "Latitude": 38.34025, "Longitude": 26.13886}, {"Client Name": "TSARAMIRSI MARIA RALIA IOANNIS", "Country": "GREECE", "Status": "Active", "Turnover": 45030.14, "Latitude": 39.19737, "Longitude": 26.28418}, {"Client Name": "TSASIS                        ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 37.86788, "Longitude": 21.20114}, {"Client Name": "TSELLOS OE                    ", "Country": "GREECE", "Status": "Active", "Turnover": 23354.31, "Latitude": 38.32293, "Longitude": 23.31518}, {"Client Name": "TSIOPOULOU LINTA KAI SIA OE   ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 40.85265, "Longitude": 25.91093}, {"Client Name": "TZIANETAS                     ", "Country": "GREECE", "Status": "Not active", "Turnover": 0.0, "Latitude": 38.88951, "Longitude": 22.44714}, {"Client Name": "V.O.F. AUTO ONDERDELENSHOP A&B", "Country": "THE NETHERLANDS", "Status": "Active", "Turnover": 47558.4, "Latitude": 53.28153, "Longitude": 6.15937}, {"Client Name": "VAFEIADIS STYLIANOS           ", "Country": "GREECE", "Status": "Active", "Turnover": 8761.2, "Latitude": 41.14488, "Longitude": 24.15744}, {"Client Name": "VAKAROS STEFANOS & SONS OE    ", "Country": "GREECE", "Status": "Active", "Turnover": 39146.9, "Latitude": 39.72047, "Longitude": 20.78478}, {"Client Name": "VAVAROUTAS NIKOLAOS ATHANASIOS", "Country": "GREECE", "Status": "Active", "Turnover": 41596.97, "Latitude": 38.20188, "Longitude": 21.69905}, {"Client Name": "WORLD AUTOMOTIVE SPOŁKA Z.O.O.", "Country": "POLAND", "Status": "Active", "Turnover": 2179.24, "Latitude": 52.06703, "Longitude": 20.43386}, {"Client Name": "XRISTAKOS ANTALLAKTIKA EE     ", "Country": "GREECE", "Status": "Active", "Turnover": 30986.28, "Latitude": 39.55485, "Longitude": 21.78502}, {"Client Name": "XYPOLITAS EYTHIMIOS ANTONIOS  ", "Country": "GREECE", "Status": "Active", "Turnover": 8199.51, "Latitude": 36.43852, "Longitude": 28.23629}, {"Client Name": "ZANNAKIS                      ", "Country": "GREECE", "Status": "Active", "Turnover": 17380.91, "Latitude": 38.06673, "Longitude": 23.77877}, {"Client Name": "ZANTOPOULOS                   ", "Country": "GREECE", "Status": "Active", "Turnover": 0.0, "Latitude": 40.28474, "Longitude": 22.51851}];
+        const map = L.map('map').setView([39.0742, 21.8243], 6);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+        }).addTo(map);
+
+        const markerMap = [];
+
+        function getColor(status) {
+            return status.toLowerCase() === "active"
+                ? "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png"
+                : "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png";
+        }
+
+        function loadMarkers(data) {
+            markerMap.forEach(m => map.removeLayer(m.marker));
+            markerMap.length = 0;
+
+            data.forEach(client => {
+                const icon = L.icon({
+                    iconUrl: getColor(client.Status),
+                    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+
+                const marker = L.marker([client.Latitude, client.Longitude], { icon }).addTo(map)
+                    .bindTooltip(client["Client Name"])
+                    .on("click", () => {
+                        document.getElementById("info-pane").innerHTML =
+                            "<b>" + client["Client Name"] + "</b><br>" +
+                            "Turnover 2025: €" + parseFloat(client["Turnover"]).toLocaleString() + "<br>" +
+                            "Country: " + client["Country"];
+                    });
+
+                markerMap.push({ marker: marker, data: client });
+            });
+        }
+
+        function searchAndZoom() {
+            const input = document.getElementById("searchInput").value.toLowerCase();
+            for (let entry of markerMap) {
+                const name = entry.data["Client Name"].toLowerCase();
+                const country = entry.data["Country"].toLowerCase();
+                if (name.includes(input) || country.includes(input)) {
+                    map.setView([entry.data.Latitude, entry.data.Longitude], 12);
+                    entry.marker.openTooltip();
+                    document.getElementById("info-pane").innerHTML =
+                        "<b>" + entry.data["Client Name"] + "</b><br>" +
+                        "Turnover 2025: €" + parseFloat(entry.data["Turnover"]).toLocaleString() + "<br>" +
+                        "Country: " + entry.data["Country"];
+                    return;
+                }
+            }
+        }
+
+        
+function filterMarkers() {
+    const selectedCountry = document.getElementById("countryFilter").value;
+    const turnoverLimit = parseFloat(document.getElementById("turnoverRange").value);
+    document.getElementById("turnoverValue").innerText = turnoverLimit;
+
+    const filtered = clientData.filter(c =>
+        (selectedCountry === "" || c.Country === selectedCountry) &&
+        parseFloat(c.Turnover) >= turnoverLimit
+    );
+    loadMarkers(filtered);
+}
+
+function resetFilters() {
+    document.getElementById("countryFilter").value = "";
+    document.getElementById("searchInput").value = "";
+    document.getElementById("turnoverRange").value = {turnover_min};
+    document.getElementById("turnoverValue").innerText = {turnover_min};
+    loadMarkers(clientData);
+    map.setView([39.0742, 21.8243], 6);
+    document.getElementById("info-pane").innerHTML = "Click a client marker to view details here.";
+}
+
+function filterByCountry() {
+    filterMarkers();
+
+            const selected = document.getElementById("countryFilter").value;
+            const filtered = selected
+                ? clientData.filter(c => c.Country === selected)
+                : clientData;
+            loadMarkers(filtered);
+        }
+
+        loadMarkers(clientData);
+    </script>
+
+<div style="position:absolute; bottom:10px; left:10px; z-index:1000; background:white; padding:10px; border:1px solid #ccc; font-family:Arial;">
+    <strong>Legend:</strong><br>
+    <img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png" height="20"> Active<br>
+    <img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png" height="20"> Not Active
+</div>
+</body>
+</html>
